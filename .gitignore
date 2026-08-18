@@ -1,0 +1,6 @@
+node_modules/
+*.log
+.DS_Store
+dist/
+.persona-studio.json
+persona-studio.json
