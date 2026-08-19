@@ -14,7 +14,7 @@
 - **AI 设计助手 / AI design assistant**：角色设计师 / 角色访谈，自动回填表单
 - **入戏扮演 / In-character roleplay**：绝不破功、口语化、可拒绝吐槽、做正事保持角色口吻
 - **亲密度养成 / Intimacy growth**：随对话自然变化（自调 + 定期校准），五阶段语气 + 会话页爱心
-- **角色记忆 / Role memory**：模型自主补充符合人设的设定，跨会话累积
+- **角色记忆 / Role memory**：分区记忆（长期事实 / 用户信息 / 关系状态 / 承诺 / 事件）+ 追加式日志自动归档，系统记日期、增量合并防丢信息，跨会话累积
 - **不浪费 token / No token waste**：子代理不会被注入角色段
 - **纯本地 / Local-only**：数据只存本地，不上传
 
@@ -68,7 +68,7 @@ pnpm add dsh-cultivation
 
 | 半区 | 文件 | 职责 |
 | --- | --- | --- |
-| Host | `lib/index.js` | 数据持久化（按 key 合并防并发覆盖）、本地 API（load/save/chat/session-set/template-delete/avatar*）、按会话注入角色段（子代理跳过）、亲密度工具 + 定期校准、角色记忆工具 |
+| Host | `lib/index.js` | 数据持久化（按 key 合并防并发覆盖）、本地 API（load/save/chat/session-set/template-delete/avatar*）、按会话注入角色段（子代理跳过）、亲密度工具 + 定期校准、记忆 v3（分区 + 追加式日志 + 独立归档器自动合并） |
 | Client | `lib/client.js` | 角色库、新会话选择弹窗、编辑弹窗（表单 + AI 助手 + 预览 + 头像）、会话页角色 chip / 亲密度爱心 / 消息头像（复用 DSH 官方组件与设计 token） |
 
 `package.json` 的 `dsh.client` 声明让 DSH web 插件表自动发现 `lib/client.js`。交付前跑 `npm run check` 预检（语法、工具名、零外部 import、bundle id 一致性）。
@@ -95,7 +95,8 @@ persona-studio/
 - [x] Phase 1：角色档案表单 + 角色库 + 开关/浓度 + 角色卡 + 注入
 - [x] Phase 2：AI 设计助手（设计师 / 访谈，自动回填表单）
 - [x] Phase 3：亲密度养成（对话中自然变化、语气随阶段、防用户篡改）
-- [x] 会话级角色绑定、头像系统、角色记忆、导出/导入
+- [x] 会话级角色绑定、头像系统、导出/导入
+- [x] Phase 4：记忆 v3（分区 + 追加式日志 + 自动归档合并、时间戳纪律、防整包重写丢信息）
 
 ## License
 
