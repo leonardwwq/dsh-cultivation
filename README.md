@@ -1,8 +1,8 @@
-# @persona-studio/dsh — 角色养成 (Character Cultivation)
+# dsh-cultivation — 角色养成 (Character Cultivation)
 
 > A DeepSeek Harness (DSH) plugin that gives each session a persistent, in-character AI role — personalities that talk like real people, still get work done, grow closer (or colder) over time, and remember what they add to themselves.
 >
-> 一个 DeepSeek Harness 插件：为每个会话绑定一个可长期养成的 AI 角色——入戏且自然，该干活照干，亲密度随对话成长，角色还会自己补充并记住设定。
+> 一个 DeepSeek Harness 插件：为每个会话绑定一个可长期养成的 AI 角色——角色扮演 + 情感陪伴，入戏且自然，该干活照干，亲密度随对话成长，角色还会自己补充并记住设定。
 
 ---
 
@@ -28,8 +28,8 @@
 
 ```bash
 cd "$DSH_HOME/profiles/web"
-pnpm add @persona-studio/dsh
-# 本地开发可用符号链接：ln -s "$PWD" node_modules/@persona-studio/dsh
+pnpm add dsh-cultivation
+# 本地开发可用符号链接：ln -s "$PWD" node_modules/dsh-cultivation
 ```
 
 **2. 在 `cordis.patch.yml` 加插入块**：
@@ -37,7 +37,7 @@ pnpm add @persona-studio/dsh
 ```yaml
 - insert:
     - id: persona-studio
-      name: '@persona-studio/dsh'
+      name: 'dsh-cultivation'
 ```
 
 重启 DSH 后，「设置 → 角色养成」出现本插件。

@@ -1,7 +1,7 @@
 {
-  "name": "@persona-studio/dsh",
+  "name": "dsh-cultivation",
   "version": "0.1.0",
-  "description": "人格工坊：设计 Agent 的人格档案（性别/身高体重/生平/情感创伤/兴趣等）并注入系统提示，含模板系统、启用人格开关与浓度滑块。",
+  "description": "角色养成：为 Agent 赋予可养成的 AI 角色（角色扮演 + 情感陪伴）——会话级角色绑定、亲密度随对话成长、角色记忆、AI 设计助手。",
   "type": "module",
   "main": "lib/index.js",
   "scripts": {
