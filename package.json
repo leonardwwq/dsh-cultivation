@@ -4,6 +4,9 @@
   "description": "人格工坊：设计 Agent 的人格档案（性别/身高体重/生平/情感创伤/兴趣等）并注入系统提示，含模板系统、启用人格开关与浓度滑块。",
   "type": "module",
   "main": "lib/index.js",
+  "scripts": {
+    "check": "node scripts/check.cjs"
+  },
   "exports": {
     ".": {
       "default": "./lib/index.js"
