@@ -41,6 +41,14 @@
     }
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/leonardwwq/dsh-cultivation.git"
+  },
+  "homepage": "https://github.com/leonardwwq/dsh-cultivation#readme",
+  "bugs": {
+    "url": "https://github.com/leonardwwq/dsh-cultivation/issues"
+  },
   "peerDependencies": {
     "react": "^18.0.0",
     "@deepseek-ai/cordis": "*",

@@ -6,11 +6,9 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/dsh-cultivation"><img src="https://img.shields.io/npm/v/dsh-cultivation" alt="npm version"/></a>
-  <a href="https://github.com/YOUR_GITHUB_USERNAME/dsh-cultivation"><img src="https://img.shields.io/github/stars/YOUR_GITHUB_USERNAME/dsh-cultivation?style=social" alt="stars"/></a>
+  <a href="https://github.com/leonardwwq/dsh-cultivation"><img src="https://img.shields.io/github/stars/leonardwwq/dsh-cultivation?style=social" alt="stars"/></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"/></a>
 </p>
-
-<!-- TODO(发布后替换)：把 YOUR_GITHUB_USERNAME 换成你的 GitHub 用户名 -->
 
 ---
 
