@@ -4,8 +4,27 @@
   "description": "角色养成：为 Agent 赋予可养成的 AI 角色（角色扮演 + 情感陪伴）——会话级角色绑定、亲密度随对话成长、分区记忆 + 追加日志自动归档、AI 设计助手。",
   "type": "module",
   "main": "lib/index.js",
+  "files": [
+    "lib",
+    "scripts",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "plugin",
+    "roleplay",
+    "persona",
+    "companion",
+    "character",
+    "角色养成",
+    "角色扮演",
+    "AI 陪伴"
+  ],
   "scripts": {
-    "check": "node scripts/check.cjs"
+    "check": "node scripts/check.cjs",
+    "prepublishOnly": "npm run check"
   },
   "exports": {
     ".": {
