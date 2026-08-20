@@ -41,6 +41,7 @@
     }
   },
   "license": "MIT",
+  "author": "leonardwwq",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/leonardwwq/dsh-cultivation.git"
