@@ -1,6 +1,6 @@
 {
   "name": "dsh-cultivation",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "角色养成：为 Agent 赋予可养成的 AI 角色（角色扮演 + 情感陪伴）——会话级角色绑定、亲密度随对话成长、分区记忆 + 追加日志自动归档、AI 设计助手。",
   "type": "module",
   "main": "lib/index.js",
