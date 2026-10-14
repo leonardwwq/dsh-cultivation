@@ -2,5 +2,6 @@ node_modules/
 *.log
 .DS_Store
 dist/
+*.tgz
 .persona-studio.json
 persona-studio.json
