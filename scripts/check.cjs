@@ -31,18 +31,19 @@ while ((m = nameRe.exec(host))) {
 ok('name 字段扫描完成（' + toolNames.length + ' 处）');
 
 // 3. 外部 import 检查（符号链接安装时 import @deepseek-ai/* 会解析失败，应手工构造；
-//    相对导入（./core.js）在同包内解析，不受影响；core.js 作为纯函数模块必须零导入）
+//    相对导入（./core.js）在同包内解析，不受影响；node: 内置模块不受符号链接影响，放行；
+//    core.js 作为纯函数模块必须零导入）
 const core = fs.readFileSync(path.join(root, 'lib/core.js'), 'utf8');
 const importSpecRe = /^\s*import\s+(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]/gm;
 let extBad = 0;
 for (const m of host.matchAll(importSpecRe)) {
   const spec = m[1];
-  if (!(spec.startsWith('./') || spec.startsWith('../'))) {
-    fail('lib/index.js 含外部 import（仅允许相对导入）: ' + spec);
+  if (!(spec.startsWith('./') || spec.startsWith('../') || spec.startsWith('node:'))) {
+    fail('lib/index.js 含外部 import（仅允许相对导入与 node: 内置）: ' + spec);
     extBad++;
   }
 }
-if (extBad === 0) ok('lib/index.js 无外部 import（允许相对导入）');
+if (extBad === 0) ok('lib/index.js 无外部 import（允许相对导入与 node: 内置）');
 if (/^import\s/m.test(core)) fail('lib/core.js 不得含 import（纯函数模块）');
 else ok('lib/core.js 零 import');
 
