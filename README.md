@@ -28,7 +28,7 @@
 - Belief Consolidation（信念整理）
 - Persistent local storage（本地持久化）
 
-`131 tests passed / 0 failed`
+`153 tests passed / 0 failed`
 
 > DSH 本身仍在快速迭代，插件兼容性可能随 DSH 版本变化。
 
@@ -127,7 +127,7 @@ lib/
 
 - 纯 JavaScript，**零运行时依赖**（不引入数据库、向量库、Agent Framework）
 - 单 JSON 文件本地持久化 + 原子写
-- 数据版本自动迁移（v1 → v6）
+- 数据版本自动迁移（v1 → v7）
 - 所有状态更新遵循「LLM 提议 → 代码验证 → 确定性执行」，**LLM 永远不能直接修改数据**
 
 ---
@@ -329,7 +329,7 @@ pnpm add dsh-cultivation@beta
 ## Testing
 
 ```bash
-npm test             # 全部单元测试（131 tests passed / 0 failed）
+npm test             # 全部单元测试（153 tests passed / 0 failed）
 npm run check        # 发布前预检（语法 / 工具名 / 零外部 import / bundle id）
 npm pack --dry-run   # 检查 npm tarball 内容
 ```

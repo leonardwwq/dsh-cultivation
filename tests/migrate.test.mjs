@@ -27,7 +27,7 @@ test('Test 3：v5 → v6 迁移 intimacy 数值完整保留', () => {
     sessions: {}
   }
   const out = migrate(data)
-  assert.equal(out.version, 6)
+  assert.equal(out.version, 7)
   assert.equal(intimacyOf(out.relations, 'p1', DEFAULT_USER_ID), 73)
   assert.deepEqual(out.relations.p1[DEFAULT_USER_ID], { intimacy: 73 })
 })
@@ -40,8 +40,8 @@ test('migration 幂等：同一数据迁移两次结果一致', () => {
   }
   const once = migrate(data)
   const twice = migrate(migrate(data))
-  assert.equal(once.version, 6)
-  assert.equal(twice.version, 6)
+  assert.equal(once.version, 7)
+  assert.equal(twice.version, 7)
   assert.equal(intimacyOf(once.relations, 'p1', DEFAULT_USER_ID), 66)
   assert.equal(intimacyOf(twice.relations, 'p1', DEFAULT_USER_ID), 66)
   assert.equal(JSON.stringify(once), JSON.stringify(twice))
@@ -109,7 +109,7 @@ test('v1 数据：迁移到 v6，不崩溃、模板保留', () => {
     templates: { p1: makeTpl() }
   }
   const out = migrate(data)
-  assert.equal(out.version, 6)
+  assert.equal(out.version, 7)
   assert.equal(out.defaultPersonaId, 'p1')
   assert.equal(out.defaultEnabled, true)
   assert.equal(out.settings.concentration, 60)
@@ -127,7 +127,7 @@ test('v2 数据（memory 为整段字符串）：迁移到 v6 拆进长期事实
     sessions: {}
   }
   const out = migrate(data)
-  assert.equal(out.version, 6)
+  assert.equal(out.version, 7)
   assert.deepEqual(out.templates.p1.memory.facts, ['第一行', '第二行'])
 })
 
@@ -138,7 +138,7 @@ test('v3 数据（无 intimacy/relations）：迁移到 v6 不崩溃、relations
     sessions: {}
   }
   const out = migrate(data)
-  assert.equal(out.version, 6)
+  assert.equal(out.version, 7)
   assert.deepEqual(out.relations, {})
   assert.equal(intimacyOf(out.relations, 'p1', DEFAULT_USER_ID), 0)
 })
@@ -158,7 +158,7 @@ test('migrate：templates 含非法条目时防御性跳过', () => {
     sessions: {}
   }
   const out = migrate(data)
-  assert.equal(out.version, 6)
+  assert.equal(out.version, 7)
   assert.ok(out.templates.good)
   assert.equal(intimacyOf(out.relations, 'good', DEFAULT_USER_ID), 73)
   // 非法模板保持原样（不崩溃）
