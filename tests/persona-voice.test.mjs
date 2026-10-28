@@ -36,12 +36,15 @@ function teaseData(extra) {
 }
 
 // ============ 扮演规则 ============
-test('规则：不再强制「第一句」用称呼/口头禅起手，并明确反对重复开场', () => {
+test('规则：压缩到「你是什么样的人」，仍反对重复开场并保留工具用法', () => {
   const rules = buildRoleRules('毒舌损友')
   assert.ok(!rules.includes('第一句必须'))
   assert.ok(!rules.includes('硬性规则'))
-  assert.ok(rules.includes('不要每轮用同一个称呼、语气词或口头禅起手'))
+  assert.ok(rules.includes('别每轮用同一个称呼、语气词或口头禅起手'))
   assert.ok(rules.includes('persona_memory_log') && rules.includes('persona_adjust_intimacy') && rules.includes('persona_growth'))
+  // v8：整卡只有 30% 预算是规则，874 字的元指令堆会挤掉记忆、也把模型逼成自我监控。
+  // 这条上限是防回涨的闸门；真要放宽，先拿真实角色卡体积和用户实测说话。
+  assert.ok(rules.length < 420, '规则块 ' + rules.length + ' 字，超过 420 的预算')
 })
 
 test('角色卡：语气词「喂」不当称呼注入；口头禅标注偶尔用', () => {
@@ -49,6 +52,8 @@ test('角色卡：语气词「喂」不当称呼注入；口头禅标注偶尔�
   assert.ok(!card.includes('叫用户：喂'))
   assert.ok(!card.includes('对用户的称呼：喂'))
   assert.ok(!card.includes('口吻锚点'))
+  // v8：角色浓度只往卡里印数字、不改变任何行为，已整条删除
+  assert.ok(!card.includes('角色浓度'), '角色卡不该再出现「角色浓度」')
   assert.ok(card.includes('偶尔冒一句才像口头禅'))
 })
 
@@ -184,7 +189,7 @@ test('migrate v6 → v7：出厂称呼「喂」改为「兄弟」、成长去重
     }
   }
   const out = migrate(d)
-  assert.equal(out.version, 7)
+  assert.equal(out.version, 8)
   assert.equal(out.templates['sample-tease'].fields.userAddress, '兄弟')
   assert.equal(out.templates.other.fields.userAddress, '喂') // 用户自建角色不动（渲染时会被 usableAddress 忽略）
   assert.equal(out.templates['sample-tease'].growth.length, 1)

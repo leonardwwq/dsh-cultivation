@@ -8,7 +8,7 @@ import {
   EVENT_LOG_CAP, EVENT_TEXT_MAX, EVENT_SOURCE_CONVERSATION,
   contentText, normalizeEvent, normalizeEventLog,
   buildTurnEvent, buildEventsFromLog,
-  getEventLog, appendEvents, eventsToChatHistory, eventsToSayingLines,
+  getEventLog, appendEvents, eventIdsUpTo, eventsToChatHistory, eventsToSayingLines,
   normalizeRelations, migrate, DEFAULT_USER_ID
 } from '../lib/core.js'
 
@@ -282,4 +282,29 @@ test('buildEventsFromLog：纯插件轮次被跳过（不产生事件）', () =>
   const events = buildEventsFromLog(log)
   assert.equal(events.length, 1)
   assert.equal(events[0].userInput, '真问题')
+})
+
+// ============ eventIdsUpTo：Belief evidence 的时序前缀（更早或等于当前事件） ============
+test('eventIdsUpTo：返回从开头到当前事件（含）的 id 前缀', () => {
+  const events = [{ id: 'evt-1' }, { id: 'evt-2' }, { id: 'evt-3' }]
+  assert.deepEqual(eventIdsUpTo(events, 'evt-1'), ['evt-1'])
+  assert.deepEqual(eventIdsUpTo(events, 'evt-2'), ['evt-1', 'evt-2'])
+  assert.deepEqual(eventIdsUpTo(events, 'evt-3'), ['evt-1', 'evt-2', 'evt-3'])
+})
+
+test('eventIdsUpTo：eventId 不存在时返回空数组（不退回全长）', () => {
+  const events = [{ id: 'evt-1' }, { id: 'evt-2' }]
+  assert.deepEqual(eventIdsUpTo(events, 'evt-404'), [])
+})
+
+test('eventIdsUpTo：非数组 / 空数组 / 空 id 返回空数组', () => {
+  assert.deepEqual(eventIdsUpTo(null, 'evt-1'), [])
+  assert.deepEqual(eventIdsUpTo('evt-1', 'evt-1'), [])
+  assert.deepEqual(eventIdsUpTo([], 'evt-1'), [])
+  assert.deepEqual(eventIdsUpTo([{ id: 'evt-1' }], ''), [])
+})
+
+test('eventIdsUpTo：重复 id 不重复输出、空 id / 脏条目被过滤', () => {
+  const events = [{ id: 'evt-1' }, { id: '' }, null, { id: 'evt-2' }, { id: 'evt-2' }, { id: 'evt-3' }]
+  assert.deepEqual(eventIdsUpTo(events, 'evt-3'), ['evt-1', 'evt-2', 'evt-3'])
 })

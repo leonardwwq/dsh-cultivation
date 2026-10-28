@@ -7,8 +7,9 @@ import {
   clampIntimacy, stageName, toneInstruction,
   normalizeRelations, getRelationshipState, updateRelationshipState, intimacyOf, applyIntimacyDelta,
   normalizeMemory, normalizeMemoryLog, normalizeGrowth, normalizeMood,
-  emptyMemory, parseDated, renderMemory,
-  todayStr, MEMORY_CAPS, MEMORY_LOG_CAP, GROWTH_CAP, MOOD_MAX
+  emptyMemory, parseDated, renderMemory, renderPersonaCard,
+  todayStr, MEMORY_CAPS, MEMORY_LOG_CAP, GROWTH_CAP, MOOD_MAX,
+  MEMORY_RENDER_BUDGET, MEMORY_RENDER_CAPS, MEMORY_RENDER_ENTRY_MAX, MEMORY_LOG_RENDER_CAP, MEMORY_LOG_RENDER_LIMIT
 } from '../lib/core.js'
 
 // ============ normalizeMemory ============
@@ -99,13 +100,101 @@ test('todayStr：格式 YYYY-MM-DD', () => {
 })
 
 // ============ renderMemory ============
-test('renderMemory：分区渲染（正常与空）', () => {
+test('renderMemory：分区渲染（正常与全空）', () => {
   const tpl = { memory: { facts: ['出身书香门第'], events: [{ d: '2024-08-18', t: '看了夜场电影' }] }, memoryLog: [{ d: '2024-08-19', t: '约好下周吃烧烤' }] }
   const out = renderMemory(tpl)
   assert.ok(out.includes('长期事实：\n- 出身书香门第'))
   assert.ok(out.includes('2024-08-18：看了夜场电影'))
+  // events 非空时「最近记录」仍渲染：日志可能含尚未归档的新信息（归档失败时尤其重要）
   assert.ok(out.includes('最近记录：\n- 2024-08-19：约好下周吃烧烤'))
-  assert.ok(renderMemory({ memory: null }).includes('（暂无）'))
+  assert.equal(renderMemory({ memory: null }), '')
+})
+
+test('renderMemory：空分区不渲染「（暂无）」，全空返回空串', () => {
+  assert.equal(renderMemory({ memory: emptyMemory(), memoryLog: [] }), '')
+  const out = renderMemory({ memory: { facts: ['只有这一条事实'] } })
+  assert.ok(out.includes('长期事实：\n- 只有这一条事实'))
+  assert.ok(!out.includes('（暂无）'))
+  assert.ok(!out.includes('关于用户：'))
+  assert.ok(!out.includes('近期事件：'))
+  assert.ok(!out.includes('最近记录：'))
+})
+
+test('renderMemory：所有分区塞满时总长 ≤ MEMORY_RENDER_BUDGET，且各分区 ≤ 分区上限', () => {
+  const long = '很长的记忆内容'.repeat(40) // 280 字，远超单条上限
+  const tpl = {
+    memory: {
+      facts: Array.from({ length: MEMORY_CAPS.facts }, (_, i) => '事实' + i + long),
+      userInfo: Array.from({ length: MEMORY_CAPS.userInfo }, (_, i) => '用户' + i + long),
+      relationship: Array.from({ length: MEMORY_CAPS.relationship }, (_, i) => '关系' + i + long),
+      promises: Array.from({ length: MEMORY_CAPS.promises }, (_, i) => '承诺' + i + long),
+      events: Array.from({ length: MEMORY_CAPS.events }, (_, i) => ({ d: '2024-08-' + String(i + 1).padStart(2, '0'), t: '事件' + i + long }))
+    },
+    memoryLog: Array.from({ length: MEMORY_LOG_CAP }, (_, i) => ({ d: '2024-09-01', t: '日志' + i + long }))
+  }
+  const out = renderMemory(tpl)
+  assert.ok(out.length <= MEMORY_RENDER_BUDGET, '实际 ' + out.length + ' 字符，超过预算 ' + MEMORY_RENDER_BUDGET)
+  // 每个分区（含标题与条目前缀）都不超过自己的上限
+  const labels = ['长期事实', '关于用户', '关系状态', '承诺与约定', '近期事件']
+  const keys = ['facts', 'userInfo', 'relationship', 'promises', 'events']
+  const starts = labels.map((l) => out.indexOf(l + '：'))
+  starts.forEach((start, i) => {
+    assert.ok(start >= 0, labels[i] + ' 应被渲染')
+    const end = i + 1 < starts.length ? starts[i + 1] - 1 : out.indexOf('最近记录：') - 1
+    assert.ok(end - start <= MEMORY_RENDER_CAPS[keys[i]], labels[i] + ' 超分区上限')
+  })
+})
+
+test('renderMemory：最近记录最多 3 条、总长 ≤ 240，且保留最新（头插在开头）', () => {
+  // memoryLog 是 unshift 头插：数组开头最新
+  const log = Array.from({ length: 20 }, (_, i) => ({ d: '2024-09-' + String(i + 1).padStart(2, '0'), t: '日志第' + i + '条' }))
+  const out = renderMemory({ memoryLog: log })
+  assert.ok(out.includes('日志第0条'))
+  assert.ok(out.includes('日志第1条'))
+  assert.ok(out.includes('日志第2条'))
+  assert.ok(!out.includes('日志第3条'), '只应渲染最新 3 条')
+  const block = out.slice(out.indexOf('最近记录：'))
+  assert.ok(block.length <= MEMORY_LOG_RENDER_CAP, '实际 ' + block.length + ' 字符')
+  assert.equal((block.match(/^- /gm) || []).length, MEMORY_LOG_RENDER_LIMIT)
+  assert.ok(out.length <= MEMORY_RENDER_BUDGET)
+})
+
+test('renderMemory：分区超限丢旧留新（facts 保留末尾，events 保留开头）', () => {
+  const facts = Array.from({ length: MEMORY_CAPS.facts }, (_, i) => '事实' + String(i).padStart(2, '0') + 'x'.repeat(40))
+  const events = Array.from({ length: MEMORY_CAPS.events }, (_, i) => ({ d: '2024-08-' + String(i + 1).padStart(2, '0'), t: '事件' + String(i).padStart(2, '0') + 'x'.repeat(40) }))
+  const out = renderMemory({ memory: { facts, events } })
+  // facts 是 push 追加，末尾最新：保留事实19，丢弃事实00
+  assert.ok(out.includes('事实19'))
+  assert.ok(!out.includes('事实00'))
+  // events 是 unshift 头插，开头最新：保留事件00，丢弃事件19
+  assert.ok(out.includes('事件00'))
+  assert.ok(!out.includes('事件19'))
+})
+
+test('renderMemory：单条超长条目被截断（≤120 字 + 省略号）', () => {
+  const long = '开头' + '中'.repeat(300) + '结尾'
+  const out = renderMemory({ memory: { facts: [long] } })
+  const line = out.split('\n').find((l) => l.startsWith('- '))
+  assert.ok(line.endsWith('…'))
+  assert.equal(line.length, 2 + MEMORY_RENDER_ENTRY_MAX)
+  assert.ok(!out.includes('结尾'))
+})
+
+test('renderPersonaCard：记忆全空时不渲染空的「你的记忆」标题', () => {
+  const data = {
+    version: 6,
+    settings: { concentration: 80 },
+    templates: {
+      p: { id: 'p', name: '角色P', fields: { name: '角色P' }, memory: emptyMemory(), memoryLog: [], growth: [], mood: null }
+    },
+    relations: {},
+    sessions: {}
+  }
+  assert.ok(!renderPersonaCard(data, 'p').includes('【你的记忆'))
+  data.templates.p.memory.facts = ['一个会被记住的事实']
+  const card = renderPersonaCard(data, 'p')
+  assert.ok(card.includes('【你的记忆（今天：'))
+  assert.ok(card.includes('一个会被记住的事实'))
 })
 
 // ============ 关系状态 / 亲密度（Test 1/2/4/5） ============

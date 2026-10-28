@@ -40,7 +40,7 @@ test('Test 1：有 Belief 时进入 Response Prompt（最终角色卡包含该 B
   const data = makeData({ pA: { local: { intimacy: 60, beliefs: [belief('b1', '用户可能很重视工作生活平衡', 0.82)] } } })
   const card = renderPersonaCard(data, 'pA') // 默认 userId = DEFAULT_USER_ID
   assert.ok(card.includes('用户可能很重视工作生活平衡'))
-  assert.ok(card.includes('置信度：82%'))
+  assert.ok(card.includes('置信度 82%'))
   assert.ok(card.includes('【你对用户的一些长期认识】'))
 })
 
@@ -50,7 +50,7 @@ test('Test 2：没有 Belief 时正常生成（不报错、无空 section）', (
   const card = renderPersonaCard(data, 'pA')
   assert.ok(card.includes('【角色档案：角色A】'))
   assert.ok(!card.includes('【你对用户的一些长期认识】'))
-  assert.ok(!card.includes('置信度：'))
+  assert.ok(!card.includes('置信度'))
   // buildBeliefContext 空输入返回空串
   assert.equal(buildBeliefContext([]), '')
   assert.equal(buildBeliefContext(null), '')
@@ -151,7 +151,7 @@ test('Test 10：旧数据（无 relations/beliefs）正常生成回复', () => {
   const data2 = makeData({ pA: { local: { intimacy: 30 } } })
   const card2 = renderPersonaCard(data2, 'pA')
   assert.ok(card2.includes('【亲密度 30/100'))
-  assert.ok(!card2.includes('置信度：'))
+  assert.ok(!card2.includes('置信度'))
   // 角色不存在时返回空串（不崩溃）
   assert.equal(renderPersonaCard(data, 'no-such-persona'), '')
 })
@@ -175,9 +175,9 @@ test('行为验证：User A 获得 Belief Context，User B 没有（相同 Perso
   assert.ok(systemA.includes('【亲密度 70/100') && systemB.includes('【亲密度 70/100'))
   // 关键断言：A 的 LLM 输入（system prompt）包含该 Belief，B 的不包含
   assert.ok(systemA.includes('用户可能很重视工作生活平衡'))
-  assert.ok(systemA.includes('置信度：90%'))
+  assert.ok(systemA.includes('置信度 90%'))
   assert.ok(!systemB.includes('用户可能很重视工作生活平衡'))
-  assert.ok(!systemB.includes('置信度：'))
+  assert.ok(!systemB.includes('置信度'))
   // 对同一用户输入，A/B 的上下文确实不同（唯一差异 = Belief Context）
   assert.notEqual(systemA, systemB)
 })

@@ -7,7 +7,7 @@ import {
   BELIEF_CAP, BELIEF_LEARNING_RATE, BELIEF_CONTRADICTION_FACTOR, BELIEF_CREATE_MIN_CONFIDENCE,
   validateBeliefProposal, applyBeliefUpdate, trimBeliefs, getRelevantBeliefs,
   normalizeBeliefs, normalizeBeliefUpdates, getBeliefs, ensureBeliefsArray, getBeliefUpdates, hasBeliefUpdate, recordBeliefUpdate,
-  buildBeliefSystem, normalizeRelations, migrate, intimacyOf, DEFAULT_USER_ID
+  buildBeliefSystem, buildBeliefContext, normalizeRelations, migrate, intimacyOf, DEFAULT_USER_ID
 } from '../lib/core.js'
 
 // ---- 辅助 ----
@@ -231,7 +231,7 @@ test('Test 17：重新加载 Beliefs 不丢失（normalize/migrate 保留）', (
 })
 
 // ============ Test 18：getRelevantBeliefs 返回正确排序和数量 ============
-test('Test 18：getRelevantBeliefs 按 confidence 降序、数量受限', () => {
+test('Test 18：新鲜度相同时按 confidence 降序、数量受限', () => {
   const relations = { p: { u: { intimacy: 0, beliefs: [
     { id: 'b1', proposition: 'p1', confidence: 0.4, evidence: [], createdAt: 1, updatedAt: 1 },
     { id: 'b2', proposition: 'p2', confidence: 0.9, evidence: [], createdAt: 1, updatedAt: 1 },
@@ -240,12 +240,44 @@ test('Test 18：getRelevantBeliefs 按 confidence 降序、数量受限', () => 
     { id: 'b5', proposition: 'p5', confidence: 0.95, evidence: [], createdAt: 1, updatedAt: 1 },
     { id: 'b6', proposition: 'p6', confidence: 0.5, evidence: [], createdAt: 1, updatedAt: 1 }
   ] } } }
-  const rel = getRelevantBeliefs(relations, 'p', 'u') // 默认最多 5 条
+  // now 传 2（只比 updatedAt=1 晚 1ms）：六条新鲜度相同，排序退化为纯置信度
+  const rel = getRelevantBeliefs(relations, 'p', 'u', 5, 2) // 默认最多 5 条
   assert.equal(rel.length, 5)
   assert.deepEqual(rel.map((b) => b.id), ['b5', 'b2', 'b3', 'b6', 'b1'])
-  const rel3 = getRelevantBeliefs(relations, 'p', 'u', 3)
+  const rel3 = getRelevantBeliefs(relations, 'p', 'u', 3, 2)
   assert.equal(rel3.length, 3)
   assert.deepEqual(rel3.map((b) => b.id), ['b5', 'b2', 'b3'])
+})
+
+// ============ Test 18b：置信度 × 新鲜度（v8）============
+test('Test 18b：陈年高置信信念让位给新观察，但不被删除、置信度也不变', () => {
+  const now = Date.UTC(2026, 9, 28)
+  const day = 86400000
+  const old = { id: 'old', proposition: '一条 100% 的老判断', confidence: 1, evidence: [], createdAt: now - 60 * day, updatedAt: now - 60 * day }
+  const fresh = { id: 'fresh', proposition: '刚验证的新观察', confidence: 0.6, evidence: [], createdAt: now, updatedAt: now }
+  const relations = { p: { u: { intimacy: 0, beliefs: [old, fresh] } } }
+  const rel = getRelevantBeliefs(relations, 'p', 'u', 5, now)
+  assert.deepEqual(rel.map((b) => b.id), ['fresh', 'old'], '老判断应该排到新的后面')
+  // 排序只影响"这一轮先注入谁"：数据本身一个字段都不能变
+  assert.equal(old.confidence, 1)
+  assert.equal(old.updatedAt, now - 60 * day)
+  assert.equal(getBeliefs(relations, 'p', 'u').length, 2, '不能因为排后面就被丢掉')
+})
+
+test('Test 18c：注入文本带「多久前确认过」，并自己按新鲜度排序', () => {
+  const now = Date.UTC(2026, 9, 28)
+  const day = 86400000
+  const beliefs = [
+    { id: 'a', proposition: '三天前的判断', confidence: 0.6, evidence: [], createdAt: now - 3 * day, updatedAt: now - 3 * day },
+    { id: 'b', proposition: '今天的判断', confidence: 0.9, evidence: [], createdAt: now, updatedAt: now }
+  ]
+  const text = buildBeliefContext(beliefs, 5, now)
+  assert.ok(text.includes('今天的判断'), text)
+  assert.ok(text.includes('今天确认过'), text)
+  assert.ok(text.includes('3 天前确认过'), text)
+  assert.ok(text.indexOf('今天的判断') < text.indexOf('三天前的判断'), '新判断排前面')
+  // 纯函数：不改动传入数组
+  assert.deepEqual(beliefs.map((b) => b.id), ['a', 'b'])
 })
 
 // ============ Test 19：无意义 Event 不会产生 Belief ============
@@ -321,4 +353,41 @@ test('补充：ensureBeliefsArray 确保首条信念挂载到行上（写路径�
   assert.equal(getBeliefs(relations, 'p', 'u')[0].id, 'belief-001')
   // 再次调用返回同一引用
   assert.equal(ensureBeliefsArray(relations, 'p', 'u'), arr)
+})
+
+// ============ 补充：buildBeliefSystem 渲染「可引用的事件 id」（防回归：不得再读 f.__eventIds） ============
+test('补充：buildBeliefSystem 渲染调用方传入的事件 id（两个 id 都出现）', () => {
+  const event = { id: 'evt-1', userInput: '我辞职了' }
+  const sys = buildBeliefSystem({ traitTags: ['谨慎'] }, event, null, [], 60, ['evt-1', 'evt-2'])
+  assert.ok(sys.includes('evt-1'))
+  assert.ok(sys.includes('evt-2'))
+  assert.ok(sys.includes('evt-1、evt-2'))
+})
+
+test('补充：buildBeliefSystem 无可引用事件 id 时兜底文案不误导', () => {
+  const event = { id: 'evt-1', userInput: '我辞职了' }
+  for (const ids of [undefined, []]) {
+    const sys = buildBeliefSystem({ traitTags: ['谨慎'] }, event, null, [], 60, ids)
+    assert.ok(!sys.includes('由调用方另行提供'))
+    assert.ok(sys.includes('（无：本次没有可引用的事件 id，必须 candidate=false）'))
+  }
+})
+
+test('补充：buildBeliefSystem 对非法 eventIds 不抛异常（非数组当空）', () => {
+  const event = { id: 'evt-1', userInput: '我辞职了' }
+  for (const ids of [null, 'evt-1', 42, {}]) {
+    let sys
+    assert.doesNotThrow(() => { sys = buildBeliefSystem({ traitTags: ['谨慎'] }, event, null, [], 60, ids) })
+    assert.ok(sys.includes('（无：本次没有可引用的事件 id，必须 candidate=false）'))
+  }
+})
+
+test('补充：buildBeliefSystem 标注当前事件 id（缺失时不渲染、不打印 undefined）', () => {
+  const withId = buildBeliefSystem({ traitTags: ['谨慎'] }, { id: 'evt-42', userInput: '我辞职了' }, null, [], 60, ['evt-42'])
+  assert.ok(withId.includes('当前事件 id：evt-42'))
+  assert.ok(withId.includes('（evidence 通常应包含它）'))
+  assert.ok(withId.includes('引用其它 id 只用于佐证同一判断的更早事件'))
+  const noId = buildBeliefSystem({ traitTags: ['谨慎'] }, { userInput: '我辞职了' }, null, [], 60, [])
+  assert.ok(!noId.includes('当前事件 id：'))
+  assert.ok(!noId.includes('undefined'))
 })

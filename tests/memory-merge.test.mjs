@@ -2,7 +2,7 @@
 // 运行：node --test tests/
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mergeMemorySections, normalizeMemory, MEMORY_CAPS } from '../lib/core.js'
+import { mergeMemorySections, memoryLogAfterArchive, normalizeMemory, normalizeMemoryLog, MEMORY_CAPS, MEMORY_LOG_CAP, MEMORY_MERGE_KEEP } from '../lib/core.js'
 
 test('mergeMemorySections：add 增量合并 + 去重', () => {
   const mem = normalizeMemory({ facts: ['已有事实A'] })
@@ -76,4 +76,64 @@ test('mergeMemorySections：先删后增语义', () => {
   const j = { remove: { facts: ['被取代的旧条目'] }, add: { facts: ['取代它的新条目'] } }
   const out = mergeMemorySections(mem, j)
   assert.deepEqual(out.facts, ['取代它的新条目'])
+})
+
+// ---- memoryLogAfterArchive：归档成功后的日志回写（缓冲 + 未投喂的更旧条目） ----
+const mkLog = (n) => Array.from({ length: n }, (_, i) => ({ d: '2026-10-01', t: '记录' + i }))
+
+test('memoryLogAfterArchive：正常批量（fed < len，保留最近 keep 条缓冲 + 未投喂的更旧条目）', () => {
+  const log = mkLog(10)
+  const out = memoryLogAfterArchive(log, 4)
+  // 最新 3 条留作缓冲；log[3] 已投喂被移除；log[4..9] 原样跟上，顺序不变
+  assert.equal(out.length, 9)
+  assert.deepEqual(out.slice(0, 3).map((e) => e.t), ['记录0', '记录1', '记录2'])
+  assert.deepEqual(out.slice(3).map((e) => e.t), ['记录4', '记录5', '记录6', '记录7', '记录8', '记录9'])
+})
+
+test('memoryLogAfterArchive：一次投喂到底（fed >= len）等价于只留 keep 条', () => {
+  const log = mkLog(5)
+  assert.deepEqual(memoryLogAfterArchive(log, 5).map((e) => e.t), ['记录0', '记录1', '记录2'])
+  assert.equal(memoryLogAfterArchive(log, 5).length, MEMORY_MERGE_KEEP)
+  // fed 超过长度同样只留 keep 条
+  assert.deepEqual(memoryLogAfterArchive(log, 99).map((e) => e.t), ['记录0', '记录1', '记录2'])
+})
+
+test('memoryLogAfterArchive：fedCount 非法（0 / 负数 / 非数字）原样归一化返回', () => {
+  const log = mkLog(5)
+  const expect = normalizeMemoryLog(log)
+  for (const bad of [0, -3, NaN, '3', null, undefined, {}]) {
+    assert.deepEqual(memoryLogAfterArchive(log, bad), expect)
+  }
+})
+
+test('memoryLogAfterArchive：keep 与 fedCount 交叠不产生重复条目', () => {
+  const log = mkLog(10)
+  // fed=2 < keep=3：缓冲 [0,1,2] 与未投喂 [2..9] 在「记录2」处交叠
+  const out = memoryLogAfterArchive(log, 2, 3)
+  assert.equal(out.length, 10)
+  assert.deepEqual(out.map((e) => e.t), log.map((e) => e.t))
+  // 按「日期 + 文本」去重：同一条不会出现两次
+  const keys = out.map((e) => e.d + '|' + e.t)
+  assert.equal(new Set(keys).size, keys.length)
+})
+
+test('memoryLogAfterArchive：keep=0 时只留未投喂条目', () => {
+  const log = mkLog(5)
+  assert.deepEqual(memoryLogAfterArchive(log, 2, 0).map((e) => e.t), ['记录2', '记录3', '记录4'])
+})
+
+test('memoryLogAfterArchive：结果经 normalize 收敛（过滤非法条目、按 cap 截断）', () => {
+  const log = [{ d: '2026-10-01', t: '有效' }, null, { t: '' }, 'bad', ...mkLog(70)]
+  const out = memoryLogAfterArchive(log, 1)
+  assert.equal(out.length, MEMORY_LOG_CAP)
+  assert.ok(out.every((e) => e && typeof e.d === 'string' && typeof e.t === 'string' && e.t))
+})
+
+test('memoryLogAfterArchive：不修改入参，返回新数组', () => {
+  const log = mkLog(6)
+  const snap = JSON.stringify(log)
+  const out = memoryLogAfterArchive(log, 4)
+  assert.equal(JSON.stringify(log), snap)
+  assert.notEqual(out, log)
+  assert.notEqual(out[0], log[0])
 })
