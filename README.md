@@ -278,30 +278,40 @@ Consolidation 的作用就是：
 
 需要可运行的 **DSH Web** 部署。包名：`dsh-cultivation`。
 
-```bash
-# pnpm
-cd "$DSH_HOME/profiles/web"
-pnpm add dsh-cultivation
+本包是一个 **DSH bundle**：`package.json` 声明了 `dsh.bundle.patch`，`cordis.patch.yml` 自带插件装载行。安装后它会被登记为 profile 的一个 bundle 层并自动挂载，**不需要手动编辑任何 YAML**。
 
-# 或 npm
-npm install dsh-cultivation
-```
-
-安装最新开发版（beta）：
+> 需要 **0.3.0-beta.5 或更新版本**：更早的版本没有 `dsh.bundle` 声明，安装后只会成为普通依赖，不会作为 profile 层挂载。
 
 ```bash
-pnpm add dsh-cultivation@beta
+# CLI（推荐）：在 web profile 中安装，并自动登记为 bundle 层
+dsh plugin add dsh-cultivation
+
+# 安装 beta 通道
+dsh plugin add dsh-cultivation@beta
+
+# 本地开发：直接安装 checkout 目录
+dsh plugin add /path/to/dsh-cultivation
 ```
 
-然后在 `cordis.patch.yml` 添加：
+也可以从 Web UI 安装：设置 → 插件 → 安装，填入包名 `dsh-cultivation`。
 
-```yaml
-- insert:
-    - id: persona-studio
-      name: 'dsh-cultivation'
+安装完成后重启 DSH，确认 bundle 层已登记：
+
+```bash
+dsh --profile web --dump-config | grep persona-studio
 ```
 
-重启 DSH，「设置 → 角色养成」出现本插件。
+「设置 → 角色养成」出现即安装成功。
+
+> **从旧版手工安装迁移**：如果你之前按旧 README 在 `$DSH_HOME/profiles/web/cordis.patch.yml` 里手写过
+>
+> ```yaml
+> - insert:
+>     - id: persona-studio
+>       name: 'dsh-cultivation'
+> ```
+>
+> 请删除这一段。bundle 层已经自带同一行，重复的 `persona-studio` id 会冲突。
 
 > 建议使用最新版 DSH Web，以获得完整的插件与 UI 支持。
 
@@ -330,7 +340,7 @@ pnpm add dsh-cultivation@beta
 
 ```bash
 npm test             # 全部单元测试（153 tests passed / 0 failed）
-npm run check        # 发布前预检（语法 / 工具名 / 零外部 import / bundle id）
+npm run check        # 发布前预检（语法 / 工具名 / 零外部 import / client id / dsh.bundle / 展示资源）
 npm pack --dry-run   # 检查 npm tarball 内容
 ```
 

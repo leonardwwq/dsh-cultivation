@@ -1,0 +1,11 @@
+# dsh-cultivation 自带的 bundle 装载层。
+#
+# 本文件由 package.json 的 dsh.bundle.patch 声明；安装本包（dsh plugin add /
+# 插件管理器安装）后，profile 会把它当作一个 bundle 层应用，自动插入下面的插件行，
+# 不需要用户再手写 cordis.patch.yml。
+#
+# 注意：这里的 id 与旧版 README 手工安装时使用的 id 相同（persona-studio）。
+# 从旧版迁移的用户必须先删除 profile 里手写的那一段，否则同一 id 会插入两次。
+- insert:
+    - id: persona-studio
+      name: 'dsh-cultivation'
