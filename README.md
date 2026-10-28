@@ -280,7 +280,7 @@ Consolidation 的作用就是：
 
 本包是一个 **DSH bundle**：`package.json` 声明了 `dsh.bundle.patch`，`cordis.patch.yml` 自带插件装载行。安装后它会被登记为 profile 的一个 bundle 层并自动挂载，**不需要手动编辑任何 YAML**。
 
-> 需要 **0.3.0-beta.5 或更新版本**：更早的版本没有 `dsh.bundle` 声明，安装后只会成为普通依赖，不会作为 profile 层挂载。
+> 需要 **0.3.0-beta.6 或更新版本**：更早的版本没有 `dsh.bundle` 声明，安装后只会成为普通依赖，不会作为 profile 层挂载。
 
 ```bash
 # CLI（推荐）：在 web profile 中安装，并自动登记为 bundle 层
