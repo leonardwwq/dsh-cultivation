@@ -47,6 +47,7 @@ function makeCtx(llmReply) {
     llm: { stream: async function* () { yield { type: 'text-delta', text: llmReply() } } },
     agentDefaultModel: { currentSelection: () => ({ provider: 'p', model: 'm' }) },
     tools: { register: (t) => { tools[t.name] = t; return () => {} } },
+    provide: (name, service) => { ctx[name] = service; return () => {} },
     effect: (fn) => fn(),
     on: (name, fn) => { handlers[name] = fn }
   }

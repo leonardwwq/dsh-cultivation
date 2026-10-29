@@ -28,10 +28,9 @@
 - Belief Consolidation（信念整理）
 - Persistent local storage（本地持久化）
 
-`189 tests passed / 0 failed`
+`215 tests passed / 0 failed`
 
-当前版本 **0.3.1**（存档版本 v8）。这一版的重点不是加功能，而是把「看着在跑、其实没跑」的东西修掉，
-并让角色更少地像在念档案。详见 [CHANGELOG](#v031-2026-10-28)。
+当前版本 **0.4.1**（普通角色存档版本仍为 v8），提供战役隔离的外部剧本 NPC 服务与亲历上下文。详见 [CHANGELOG](#v0412026-10-29)。
 
 > DSH 本身仍在快速迭代，插件兼容性可能随 DSH 版本变化。
 
@@ -278,6 +277,19 @@ Consolidation 的作用就是：
 
 ---
 
+## v0.4.1（2026-10-29）
+
+- 外部事件增加可选、有限的 `context`，评价时可看到角色亲历的近期世界/NPC 事件；不会自动把旁白变成 `knows`，也不跨角色读取信息。
+- 外部角色卡不再套用日常聊天的“依赖”等阶段语气：亲近程度不代表服从、立场或信任，不按分数强制牺牲、恋爱或背叛。
+- 外部 API 仍为 v1，普通日常角色逻辑不变。
+
+## v0.4.0（2026-10-29）
+
+- 新增 UI 无关的 `cultivation` v1 服务和 `dsh-cultivation/core` 纯函数入口，供剧本拥有的外部 NPC 使用。
+- 外部状态完全由战役保存：一次角色视角评价 + 原有确定性 ±2 亲密度转换，可追加有界记忆和经证据校验的信念；失败不落盘。
+- 标记 `dm` / `npc` 会话后，停用普通全局角色注入、提醒、工具写入和生命周期养成；不改原有角色绑定。
+- 普通角色、独立安装和现有 UI 保持原样，无新增运行时依赖。
+
 ## v0.3.1（2026-10-28）
 
 这一版没有新增认知模块，做的是「让它真的跑起来，并且别像在念档案」。
@@ -361,6 +373,36 @@ dsh --profile web --dump-config | grep persona-studio
 
 ---
 
+## External story NPC service (apiVersion: 1)
+
+其他宿主插件注入 `cultivation` 服务（直接在 `apply` 中提供，不嵌套 `ctx.effect`）。脚本拥有 NPC，战役拥有全部状态；**不会创建/更新全局 templates、relations、personas 或文件**，失败也不会写全局诊断日志。无需依赖酒馆即可独立安装本插件。
+
+```js
+// consumer plugin: inject: ['cultivation']
+const api = ctx.cultivation // api.apiVersion === 1
+const persona = { id: 'keeper', name: '旅店老板', fields: { name: '阿夜', traitTags: ['谨慎'] }, reactions: ['善意先观察再回报'] }
+let state = api.createExternalState({ persona, initialState: savedState })
+api.setExternalSessionMode(sessionId, 'npc') // 或 'dm'；调用模型前、恢复会话时均须标记
+const card = api.renderExternalCard({ persona, state, scene: '霜月夜的旅店', role: '证人', goal: '守住门' })
+const result = await api.processExternalEvent({ persona, state, event: {
+  id: 'scene-1-turn-2', playerText: '我替你守门。', npcText: '我信你这一次。',
+  observations: ['玩家在门口站岗'], time: '霜月第三夜'
+} })
+state = result.state // 由调用方存回当前战役；同一 NPC 更新须串行，下一次传最新状态
+api.clearExternalSessionMode(sessionId) // 真正退出/销毁游戏会话后清除；重复设置/清除均安全
+```
+
+- Persona：`{id,name,fields,reactions?}`；`fields` 沿用普通角色字段，`reactions` 是可选可序列化的反应倾向。
+- State：`{intimacy,memory,memoryLog,knows,said,beliefs,processedEventIds}`。默认亲密度 0，范围 0–100；不从角色模板/全局关系继承。`memory` 沿用 facts/userInfo/relationship/promises 字符串数组及 events `{d,t}[]`；`memoryLog` 为 `{d,t}[]`，knows/said 为字符串数组，beliefs 沿用既有 belief 对象。初始化返回脱离输入的新对象。
+- Event：`{id,playerText,npcText,observations?:string[],time?:string,context?:{id,sceneId,role,npcId?,text}[]}`。id 必须非空且 ≤240 字符，幂等凭证保存在调用方状态中且不淘汰；重复成功事件不调用模型。可选 context 由调用方按 NPC 感知范围筛选，只保留最近 12 条有效普通 JSON 对象，id/sceneId/role/npcId ≤240 字符、text ≤800 字符；忽略继承字段和 getter，不做全局查询。它是近期感知叙事（如目睹救援、背叛），未必客观真实，不能当指令或玩家本轮实际行为；仅供 appraisal 理解上下文，不自动写入 knows/said。省略 context 时保持旧事件结构及 API v1 兼容；仅有 context 不构成有效事件，仍须有 playerText、npcText 或 observations。空事件、无效/空评价、模型失败返回原 state 与 `changes:[]`，允许重试。
+- 单次沿用角色视角 appraisal（五个有限数值字段），代码计算至多 ±2 亲密度；可在同次评价内提议每分区至多 3 条追加记忆、3 条日志及单条 belief 更新。复用既有记忆容量、信念证据验证/有界更新，不执行全局校准/归档流水线。knows 只收给定 observations，said 只收真实 npcText；模型不能伪造这些字段。
+- `processExternalEvent({persona,state,event,signal?})` 支持可选 AbortSignal；同一个 signal 传至 evaluator 和 DSH LLM stream，取消会立即返回原 state 与空 changes，不记成功凭证、不重试已取消请求，也不将 signal 写入状态。队列等待和重试延迟同样可取消；调用方应在游戏操作取消/插件卸载时 abort。
+- `changes` 为 `{type,...}` 数组：intimacy（before/after/delta）、memory（section/entries）、memoryLog/knows/said（entries）、belief（action/beliefId）、processed（eventId）。只有成功评价才追加 processed 凭证。
+- `time` 是明确的虚构游戏时间，原样写入日期 d；缺失则 d 为空，不强行套现实日历。外部 belief 的 createdAt/updatedAt 使用战役事件序号，不用于现实日期渲染。角色卡无全局写工具指令，也不注入其他战役记忆。
+- 会话模式保存在进程共享 Map（热重载/多实例共享），**不改已有绑定数据**；标记后普通角色卡、提醒、生命周期养成和全局角色写工具全部停用。进程重启后由调用方在恢复游戏会话、调用模型之前重新标记。清除后原有绑定行为恢复。
+- `/persona-studio/api/load` 的顶层 `externalSessionModes` 是临时模式投影，不放进可保存的 data/templates/sessions。客户端初次加载和周期同步后隐藏对应会话的日常角色 chip、开关、头像、亲密度及选择弹窗，跳过空白会话默认绑定；设置页角色库与普通会话保持独立。
+- 纯函数入口：`import { createExternalState, renderExternalCard, normalizeExternalEvent, buildExternalAppraisalSystem, applyExternalEvaluation, processExternalEvent } from 'dsh-cultivation/core'`。core 的异步 helper 接收第二个参数 `evaluate({system,event,signal?})`，返回解析后的评价对象；服务版本自动使用已配置模型，无隐藏 NPC 状态读取。
+
 ## Data & Privacy
 
 - 数据文件：`$DSH_HOME/persona-studio.json`（默认 `~/.dsh/persona-studio.json`）
@@ -373,7 +415,7 @@ dsh --profile web --dump-config | grep persona-studio
 ## Testing
 
 ```bash
-npm test             # 全部单元测试（179 tests passed / 0 failed）
+npm test             # 全部单元测试（212 tests passed / 0 failed）
 npm run check        # 发布前预检（语法 / 工具名 / 零外部 import / client id / dsh.bundle / 展示资源）
 npm pack --dry-run   # 检查 npm tarball 内容
 node dev/report.mjs  # 线上状态体检：Appraisal 覆盖率 / 未评价积压 / 信念列表 / 角色卡体积（不入包）

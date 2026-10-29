@@ -121,6 +121,7 @@ const ctx = {
   },
   agentDefaultModel: { currentSelection: () => ({ provider: 'p', model: 'm' }) },
   tools: { register: () => () => {} },
+  provide: () => () => {},
   effect: (fn) => fn(),
   on: (name, fn) => { handlers[name] = fn }
 }
