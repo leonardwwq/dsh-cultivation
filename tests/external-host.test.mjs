@@ -55,6 +55,7 @@ const event = { id: 'e1', playerText: '谢谢', npcText: '不客气', time: '暮
 
 test('apiVersion 1 service is provided directly during apply; all operations remain campaign-local', async () => {
   assert.equal(service.apiVersion, 1)
+  assert.match(service.version, /^\d+\.\d+\.\d+/, 'consumers need the mounted version to judge compatibility')
   const before = JSON.stringify(data)
   const state = service.createExternalState({ persona })
   assert.ok(service.renderExternalCard({ persona, state }).includes('旅店老板'))

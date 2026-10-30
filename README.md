@@ -375,11 +375,11 @@ dsh --profile web --dump-config | grep persona-studio
 
 ## External story NPC service (apiVersion: 1)
 
-其他宿主插件注入 `cultivation` 服务（直接在 `apply` 中提供，不嵌套 `ctx.effect`）。脚本拥有 NPC，战役拥有全部状态；**不会创建/更新全局 templates、relations、personas 或文件**，失败也不会写全局诊断日志。无需依赖酒馆即可独立安装本插件。
+其他宿主插件注入 `cultivation` 服务（直接在 `apply` 中提供，不嵌套 `ctx.effect`）。脚本拥有 NPC，战役拥有全部状态；**不会创建/更新全局 templates、relations、personas 或文件**，失败也不会写全局诊断日志。无需依赖酒馆即可独立安装本插件。消费方应在启动时校验 `api.apiVersion` 与 `api.version`，不匹配就直接报错并提示升级，而不是在运行期以 `undefined` 崩溃。
 
 ```js
 // consumer plugin: inject: ['cultivation']
-const api = ctx.cultivation // api.apiVersion === 1
+const api = ctx.cultivation // api.apiVersion === 1；api.version 为已挂载 cultivation 的包版本（0.4.2 起提供）
 const persona = { id: 'keeper', name: '旅店老板', fields: { name: '阿夜', traitTags: ['谨慎'] }, reactions: ['善意先观察再回报'] }
 let state = api.createExternalState({ persona, initialState: savedState })
 api.setExternalSessionMode(sessionId, 'npc') // 或 'dm'；调用模型前、恢复会话时均须标记
