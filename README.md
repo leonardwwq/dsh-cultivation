@@ -30,7 +30,7 @@
 
 `215 tests passed / 0 failed`
 
-当前版本 **0.4.1**（普通角色存档版本仍为 v8），提供战役隔离的外部剧本 NPC 服务与亲历上下文。详见 [CHANGELOG](#v0412026-10-29)。
+当前版本 **0.4.2**（普通角色存档版本仍为 v8），提供战役隔离的外部剧本 NPC 服务与亲历上下文。详见 [CHANGELOG](#v0422026-10-30)。
 
 > DSH 本身仍在快速迭代，插件兼容性可能随 DSH 版本变化。
 
@@ -277,6 +277,12 @@ Consolidation 的作用就是：
 
 ---
 
+## v0.4.2（2026-10-30）
+
+- `cultivation` 服务新增 `version` 字段，报告**实际挂载**的那份包版本。消费方（例如 dsh-tavern）可以在启动时校验兼容性并给出可执行的升级命令，不必再猜依赖树里是哪一份。
+- 只新增字段，`apiVersion` 仍为 1，0.4.1 的调用方不受影响。
+- 安装说明补上 `--profile`，并说明与 dsh-tavern 的单向依赖关系。
+
 ## v0.4.1（2026-10-29）
 
 - 外部事件增加可选、有限的 `context`，评价时可看到角色亲历的近期世界/NPC 事件；不会自动把旁白变成 `knows`，也不跨角色读取信息。
@@ -330,13 +336,13 @@ Consolidation 的作用就是：
 
 ```bash
 # CLI（推荐）：在 web profile 中安装，并自动登记为 bundle 层
-dsh plugin add dsh-cultivation
+dsh plugin --profile web add dsh-cultivation
 
 # 安装 beta 通道
-dsh plugin add dsh-cultivation@beta
+dsh plugin --profile web add dsh-cultivation@beta
 
 # 本地开发：直接安装 checkout 目录
-dsh plugin add /path/to/dsh-cultivation
+dsh plugin --profile web add /path/to/dsh-cultivation
 ```
 
 也可以从 Web UI 安装：设置 → 插件 → 安装，填入包名 `dsh-cultivation`。
@@ -358,6 +364,10 @@ dsh --profile web --dump-config | grep persona-studio
 > ```
 >
 > 请删除这一段。bundle 层已经自带同一行，重复的 `persona-studio` id 会冲突。
+
+### 与 dsh-tavern 的关系
+
+[dsh-tavern](https://github.com/leonardwwq/dsh-tavern) 单向依赖本插件：它的 `package.json` 声明 `dsh-cultivation: ^0.4.1`，安装时由 profile 一并拉取，并在启动时校验 `apiVersion` 与 `version`。本插件不依赖 tavern，可以单独使用；两份同时安装也安全——tavern 的兜底装载行会自动让位。
 
 > 建议使用最新版 DSH Web，以获得完整的插件与 UI 支持。
 
